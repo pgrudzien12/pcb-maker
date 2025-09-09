@@ -1,23 +1,38 @@
-"""pcb-maker: CLI to experiment with Gerber -> Snapmaker 2.0 G-code using PyGerber.
+"""Minimal pipeline-only CLI stub.
 
-DISCLAIMER:
-    Work in progress. We now rely on PyGerber for parsing/validation instead of a
-    home-grown regex. Coordinate extraction is still placeholder: currently we
-    pull raw X/Y statements directly from source for path sequencing. Future work
-    will traverse PyGerber's parsed model to extract true draw/flash primitives,
-    distinguish moves vs exposures, apply aperture/tool widths and isolation.
+Current behavior:
+  pcb-maker --pipeline path/to/pipeline.yaml
+
+Loads the pipeline YAML and prints a stage listing. No execution yet.
 """
 
 from __future__ import annotations
 
 import argparse
-import re
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List
+from typing import List
+from pipeline import load_pipeline, PipelineError  # type: ignore!
 
-def main():  # backward compatibility
-    print("pcb-maker: CLI to experiment with Gerber -> Snapmaker 2.0 G-code using PyGerber")
+
+def cli(argv: List[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="pcb-maker (pipeline loader prototype)")
+    parser.add_argument("--pipeline", type=Path, required=True, help="Path to pipeline YAML definition")
+    args = parser.parse_args(argv)
+
+    try:
+        cfg = load_pipeline(args.pipeline)
+    except PipelineError as e:
+        parser.error(f"Pipeline load failed: {e}")
+
+    print(f"Loaded pipeline version: {cfg.version}")
+    print("Stages:")
+    for idx, st in enumerate(cfg.stages, 1):
+        print(f"  {idx:02d}. {st.name}  uses={st.uses}")
+    return 0
+
+
+def main():  # pragma: no cover
+    return cli()
 
 
 if __name__ == "__main__":  # pragma: no cover
