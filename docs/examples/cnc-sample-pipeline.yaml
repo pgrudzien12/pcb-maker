@@ -7,11 +7,12 @@ version: 0.2-min-inline
 stages:
   - name: load
     uses: loader.kicad
-    folder: .\test\hexapod\
-    job: hexapod-job.gbrjob
-    drills:
-      - hexapod-PTH.drl
-      - hexapod-NPTH.drl
+    with:
+      folder: .\test\hexapod\
+      job: hexapod-job.gbrjob
+      drills:
+        - hexapod-PTH.drl
+        - hexapod-NPTH.drl
 
   - name: isolation_routing
     uses: milling.isolation

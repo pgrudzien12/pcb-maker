@@ -101,10 +101,14 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "pygerber" },
+    { name = "shapely" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pygerber", specifier = ">=2.4.3" }]
+requires-dist = [
+    { name = "pygerber", specifier = ">=2.4.3" },
+    { name = "shapely", specifier = "==2.0.4" },
+]
 
 [[package]]
 name = "pillow"
@@ -252,6 +256,24 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/bb/22/f1129e69d94ffff626bdb5c835506b3a5b4f3d070f17ea295e12c2c6f60f/pyparsing-3.2.3.tar.gz", hash = "sha256:b9c13f1ab8b3b542f72e28f634bad4de758ab3ce4546e4301970ad6fa77c38be", size = 1088608, upload-time = "2025-03-25T05:01:28.114Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl", hash = "sha256:a749938e02d6fd0b59b356ca504a24982314bb090c383e3cf201c95ef7e2bfcf", size = 111120, upload-time = "2025-03-25T05:01:24.908Z" },
+]
+
+[[package]]
+name = "shapely"
+version = "2.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/49/7e/816fd1c135b062c80b72e17b7330d9a719cd413158afa580f4aaccf59aa9/shapely-2.0.4.tar.gz", hash = "sha256:5dc736127fac70009b8d309a0eeb74f3e08979e530cf7017f2f507ef62e6cfb8", size = 280935, upload-time = "2024-04-16T22:27:33.381Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3a/d5/59efdf4d86cc6fb0c0e5ed2fd376eeda897ca32f7852ff4acba980bc87cb/shapely-2.0.4-cp312-cp312-macosx_10_9_universal2.whl", hash = "sha256:5bbd974193e2cc274312da16b189b38f5f128410f3377721cadb76b1e8ca5328", size = 2503410, upload-time = "2024-04-16T22:26:49.147Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/7f/2479812b618c61d72676749ae644671317af86683eb561183c4f7188cc1a/shapely-2.0.4-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:41388321a73ba1a84edd90d86ecc8bfed55e6a1e51882eafb019f45895ec0f65", size = 1434089, upload-time = "2024-04-16T22:26:51.672Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/6b/b6f4371346ad8ad513e8a8a01118cdae9e25510a01cc108f61321e59f8e3/shapely-2.0.4-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:0776c92d584f72f1e584d2e43cfc5542c2f3dd19d53f70df0900fda643f4bae6", size = 1274766, upload-time = "2024-04-16T22:26:54.056Z" },
+    { url = "https://files.pythonhosted.org/packages/50/a5/312ebc480f3069bd660e64e5cbde0c28a90aac2975d242f5ff470325a348/shapely-2.0.4-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c75c98380b1ede1cae9a252c6dc247e6279403fae38c77060a5e6186c95073ac", size = 2439568, upload-time = "2024-04-17T00:15:36.637Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/11/9f70f606f492ee6fd8071df4f963843c92b16344bf9cf30016a3b0a4f63f/shapely-2.0.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c3e700abf4a37b7b8b90532fa6ed5c38a9bfc777098bc9fbae5ec8e618ac8f30", size = 2524488, upload-time = "2024-04-16T22:26:55.809Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/32/bc72211f652ebf0fc487b015cc5fab9703d1c8c6cf6b5c57c5d1261ecb68/shapely-2.0.4-cp312-cp312-win32.whl", hash = "sha256:4f2ab0faf8188b9f99e6a273b24b97662194160cc8ca17cf9d1fb6f18d7fb93f", size = 1294603, upload-time = "2024-04-16T22:26:58.231Z" },
+    { url = "https://files.pythonhosted.org/packages/81/35/6d8b5cf9a747b94e8940619d914280fc4ce8e86e411ad19d39e7e8be036c/shapely-2.0.4-cp312-cp312-win_amd64.whl", hash = "sha256:03152442d311a5e85ac73b39680dd64a9892fa42bb08fd83b3bab4fe6999bfa0", size = 1441463, upload-time = "2024-04-16T22:26:59.875Z" },
 ]
 
 [[package]]
