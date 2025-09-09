@@ -1,0 +1,47 @@
+# Super-minimal KiCad pipeline draft with all parameters inlined (no ${} references)
+# Intended to show the smallest reasonable shape of the future executable YAML.
+# Not executed yet.
+
+version: 0.2-min-inline
+
+stages:
+  - name: load
+    uses: loader.kicad
+    folder: .\test\hexapod\
+    job: hexapod-job.gbrjob
+    drills:
+      - hexapod-PTH.drl
+      - hexapod-NPTH.drl
+
+  - name: isolation_routing
+    uses: milling.isolation
+    with:
+      tool_diameter: 0.80        # mm
+      max_passes: 2              # additional offset rings
+      svg: build/isolation.svg
+
+  - name: board_cutout
+    uses: milling.board_cutout
+    with:
+      tool_diameter: 1.20        # mm
+      margin: 0.50               # mm outward from board outline
+      tabs:
+        enabled: true
+        count: 4
+        width: 3.0               # mm
+        height: 0.6              # mm stock remaining
+      svg: build/cutout.svg
+
+  - name: generate_gcode
+    uses: output.cnc_gcode
+    with:
+      file: build/board.nc
+      safe_z: 5.0                # mm
+      travel_feed: 600.0         # mm/min
+      plunge_feed: 150.0         # mm/min
+      spindle_rpm: 10000
+      multi_depth:
+        enabled: true
+        pass_depth: 0.25         # mm per pass
+
+# End super-minimal inline pipeline.

@@ -1,0 +1,56 @@
+# Super-minimal KiCad pipeline draft for LASER isolation / marking
+# All parameters inlined. Not executed yet.
+# Differences vs CNC variant:
+#  - No drilling (laser can't drill plated holes)
+#  - No multi-depth passes (single depth / focus plane)
+#  - Uses laser power & dwell instead of spindle RPM and plunge feed
+#  - Optional raster/scan stage placeholder for future mask ablation
+
+version: 0.2-min-inline-laser
+
+stages:
+  - name: load
+    uses: loader.kicad
+    with:
+      folder: .\test\hexapod\
+      job: hexapod-job.gbrjob
+      drills:
+        - hexapod-PTH.drl
+        - hexapod-NPTH.drl
+      
+  - name: isolation_marking
+    uses: laser.isolation
+    with:
+      tool_spot_diameter: 0.15    # mm effective laser spot
+      passes: 1                   # number of tracing passes (increase for deeper ablation)
+      offset_rings: 1             # additional clearance offsets beyond trace edge
+      power_percent: 65           # laser module power (0-100)
+      feed_rate: 900.0            # mm/min marking speed
+      svg: build/laser_isolation.svg
+
+  - name: board_outline_mark
+    uses: laser.outline
+    with:
+      pass_type: score            # score | full_cut (full_cut requires multiple passes + slower feed)
+      power_percent: 40
+      feed_rate: 1200.0
+      svg: build/laser_outline.svg
+
+  # Optional future stage for mask removal using raster scanning
+  - name: (optional) raster_ablation
+    uses: laser.raster  # placeholder (not implemented)
+    with:
+      resolution: 0.10            # mm per pixel
+      power_percent: 55
+      feed_rate: 1500.0
+      enabled: false
+
+  - name: generate_gcode
+    uses: output.laser_gcode
+    with:
+      file: build/board-laser.nc
+      rapid_feed: 1800.0          # mm/min travel moves
+      air_assist: true            # toggle for M-code / output comment
+      safety_header: true         # emit standard safety preamble
+
+# End super-minimal laser pipeline.
