@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import yaml
+import logging
 
 
 @dataclass(slots=True)
@@ -71,6 +72,172 @@ class PipelineError(Exception):
     pass
 
 
+class BaseStageImpl:
+    """Base class for executable stage implementations.
+
+    Contract:
+      run(prev_output, context, log) -> new_output
+    The context dict accumulates named artifacts (e.g. job, isolation_paths, etc.).
+    prev_output is the value returned by the previous stage (None for first).
+    """
+
+    def __init__(self, cfg: Stage):
+        self.cfg = cfg
+
+    def run(self, prev_output: Any, context: Dict[str, Any], log: logging.Logger) -> Any:  # pragma: no cover - interface
+        raise NotImplementedError
+
+
+class LoaderKiCadStage(BaseStageImpl):
+    """Load KiCad .gbrjob metadata and store in context['job'].
+
+    Accepts inline parameters either under raw or 'with'.
+    Expected keys: folder, job.
+    """
+
+    def run(self, prev_output: Any, context: Dict[str, Any], log: logging.Logger) -> Any:  # noqa: D401
+        params = {**self.cfg.raw, **self.cfg.with_args}
+        folder = params.get("folder") or params.get("with", {}).get("folder")
+        job_name = params.get("job") or params.get("with", {}).get("job")
+        if not job_name:
+            raise PipelineError("loader.kicad stage requires 'job' path")
+        job_path = Path(folder) / job_name if folder else Path(job_name)
+        if not job_path.is_absolute() and self.cfg.raw.get("__pipeline_dir__"):
+            job_path = (Path(self.cfg.raw["__pipeline_dir__"]) / job_path).resolve()
+        try:
+            from kicad_job import load_kicad_job  # type: ignore
+        except ImportError as e:  # pragma: no cover - defensive
+            raise PipelineError(f"kicad_job module unavailable: {e}") from e
+        log.debug("[loader.kicad] loading job %s", job_path)
+        job = load_kicad_job(job_path)
+        context['job'] = job
+        return job
+
+
+class LaserIsolationStage(BaseStageImpl):
+    """Placeholder laser isolation planner.
+
+    Uses context['job'] if present. Produces a dict with placeholder geometry info.
+    """
+
+    def run(self, prev_output: Any, context: Dict[str, Any], log: logging.Logger) -> Any:  # noqa: D401
+        job = context.get('job')
+        result = {
+            'type': 'laser_isolation_paths',
+            'source': 'job' if job else None,
+            'paths': [],  # future list of polylines
+        }
+        context['laser_isolation'] = result
+        return result
+
+
+class LaserOutlineStage(BaseStageImpl):
+    """Placeholder for laser outline scoring.
+
+    Returns outline layer path if available in job metadata.
+    """
+
+    def run(self, prev_output: Any, context: Dict[str, Any], log: logging.Logger) -> Any:  # noqa: D401
+        job = context.get('job')
+        outline = None
+        if job and hasattr(job, 'outline_layer'):
+            layer = job.outline_layer()
+            outline = getattr(layer, 'path', None) if layer else None
+        context['laser_outline'] = outline
+        return outline
+
+
+class LaserRasterStage(BaseStageImpl):
+    """Placeholder for future raster mask ablation (currently returns disabled info)."""
+
+    def run(self, prev_output: Any, context: Dict[str, Any], log: logging.Logger) -> Any:  # noqa: D401
+        data = {'type': 'laser_raster', 'enabled': self.cfg.with_args.get('enabled', False)}
+        context['laser_raster'] = data
+        return data
+
+
+class MillingIsolationStage(BaseStageImpl):
+    """Placeholder for milling isolation planning."""
+
+    def run(self, prev_output: Any, context: Dict[str, Any], log: logging.Logger) -> Any:  # noqa: D401
+        result = {'type': 'milling_isolation', 'tool_diameter': self.cfg.with_args.get('tool_diameter')}
+        context['milling_isolation'] = result
+        return result
+
+
+class MillingBoardCutoutStage(BaseStageImpl):
+    """Placeholder for milling board cutout with tabs."""
+
+    def run(self, prev_output: Any, context: Dict[str, Any], log: logging.Logger) -> Any:  # noqa: D401
+        result = {'type': 'milling_board_cutout', 'tabs': self.cfg.with_args.get('tabs')}
+        context['milling_board_cutout'] = result
+        return result
+
+
+class OutputLaserGcodeStage(BaseStageImpl):
+    """Placeholder laser G-code emitter (does not write files yet)."""
+
+    def run(self, prev_output: Any, context: Dict[str, Any], log: logging.Logger) -> Any:  # noqa: D401
+        outfile = self.cfg.with_args.get('file')
+        gcode = f"; laser gcode placeholder for {outfile}" if outfile else "; laser gcode placeholder"
+        context['laser_gcode'] = gcode
+        return gcode
+
+
+class OutputCncGcodeStage(BaseStageImpl):
+    """Placeholder CNC G-code emitter."""
+
+    def run(self, prev_output: Any, context: Dict[str, Any], log: logging.Logger) -> Any:  # noqa: D401
+        outfile = self.cfg.with_args.get('file')
+        gcode = f"; cnc gcode placeholder for {outfile}" if outfile else "; cnc gcode placeholder"
+        context['cnc_gcode'] = gcode
+        return gcode
+
+
+STAGE_CLASS_REGISTRY: Dict[str, type[BaseStageImpl]] = {
+    'loader.kicad': LoaderKiCadStage,
+    'laser.isolation': LaserIsolationStage,
+    'laser.outline': LaserOutlineStage,
+    'laser.raster': LaserRasterStage,
+    'milling.isolation': MillingIsolationStage,
+    'milling.board_cutout': MillingBoardCutoutStage,
+    'output.laser_gcode': OutputLaserGcodeStage,
+    'output.cnc_gcode': OutputCncGcodeStage,
+}
+
+
+def create_stage_impl(stage: Stage) -> BaseStageImpl:
+    """Factory method returning an instantiated stage implementation.
+
+    Raises PipelineError if the 'uses' identifier is unknown.
+    """
+    cls = STAGE_CLASS_REGISTRY.get(stage.uses)
+    if not cls:
+        raise PipelineError(f"Unknown stage uses '{stage.uses}'")
+    return cls(stage)
+
+
+def execute_pipeline(cfg: PipelineConfig, log: Optional[logging.Logger] = None) -> Dict[str, Any]:
+    """Execute all stages sequentially.
+
+    Each stage receives the previous output plus a shared context dict.
+    The context gains a key per logical artifact and 'last' referencing
+    the most recent stage output. Returns the full context.
+    """
+    if log is None:  # pragma: no cover - convenience fallback
+        log = logging.getLogger('pcb_maker')
+    context: Dict[str, Any] = {'pipeline_version': cfg.version}
+    # Provide pipeline directory to stage raw so relative resolution works.
+    pipeline_dir = str(cfg.source_path.parent) if cfg.source_path else None
+    prev_output: Any = None
+    for st in cfg.stages:
+        # annotate stage raw with pipeline dir for path resolution
+        st.raw.setdefault('__pipeline_dir__', pipeline_dir)
+        impl = create_stage_impl(st)
+        log.debug("[pipeline] running stage %s (%s)", st.name, st.uses)
+        prev_output = impl.run(prev_output, context, log)
+        context['last'] = prev_output
+    return context
 def _coerce_stage(obj: Dict[str, Any]) -> Stage:
     if not isinstance(obj, dict):  # pragma: no cover - defensive
         raise PipelineError("Stage entry must be a mapping")
@@ -143,4 +310,6 @@ __all__ = [
     "PipelineError",
     "load_pipeline",
     "load_pipeline_from_string",
+    "create_stage_impl",
+    "execute_pipeline",
 ]

@@ -1,32 +1,24 @@
 import pytest
 from pathlib import Path
-import importlib.util, sys
-
-# Allow importing pipeline.py as a module when project root isn't on PYTHONPATH.
+import sys
 ROOT = Path(__file__).resolve().parent.parent
-pipeline_path = ROOT / "pipeline.py"
-if "pipeline" not in sys.modules:
-    spec = importlib.util.spec_from_file_location("pipeline", pipeline_path)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    sys.modules["pipeline"] = module
-    spec.loader.exec_module(module)  # type: ignore[attr-defined]
-else:  # pragma: no cover - defensive
-    module = sys.modules["pipeline"]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from pipeline import load_pipeline_from_string, PipelineError, load_pipeline  # type: ignore  # noqa: E402
+from pipeline import load_pipeline_from_string, PipelineError, load_pipeline  # noqa: E402
 
 def _load_kicad_job_module():
-    import importlib.util
-    job_path = ROOT / "kicad_job.py"
-    if "kicad_job" in sys.modules:
-        return sys.modules["kicad_job"]
-    spec = importlib.util.spec_from_file_location("kicad_job", job_path)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    sys.modules["kicad_job"] = module
-    spec.loader.exec_module(module)  # type: ignore[attr-defined]
-    return module
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    try:
+        import kicad_job as module  # type: ignore
+        return module
+    except ModuleNotFoundError:
+        src_dir = ROOT / 'src'
+        if str(src_dir) not in sys.path:
+            sys.path.insert(0, str(src_dir))
+        import kicad_job as module  # type: ignore
+        return module
 
 VALID_YAML = """
 version: 0.2-min-inline
