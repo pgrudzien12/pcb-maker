@@ -33,6 +33,8 @@ class PipelineConfig:
     version: str
     stages: List[Stage]
     source_path: Optional[Path] = None
+    # Optional container for runtime artifacts (populated by CLI before execution)
+    parsed_kicad_job: Any = None
 
     def find_stage(self, name: str) -> Optional[Stage]:
         for s in self.stages:

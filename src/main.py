@@ -18,7 +18,7 @@ import argparse
 import logging
 from pathlib import Path
 from typing import List, Optional, Any
-from pipeline import load_pipeline, PipelineError  # type: ignore!
+from pipeline import load_pipeline, PipelineError, execute_pipeline
 from kicad_job import parse_kicad_job_if_present
 
 
@@ -36,8 +36,20 @@ def cli(argv: List[str] | None = None) -> int:
         return 1
 
     list_declared_stages(cfg, log)
-    # parse_kicad_job_if_present now lives in kicad_job module and returns a KiCadJob
-    parse_kicad_job_if_present(cfg, cfg.source_path.parent if cfg.source_path else Path.cwd(), log, verbose=args.verbose)
+    # parse and attach KiCad job (if present) so loader stages may reuse it
+    job = parse_kicad_job_if_present(cfg, cfg.source_path.parent if cfg.source_path else Path.cwd(), log, verbose=args.verbose)
+    if job is not None:
+        # attach parsed job to the config object so stage implementations can consult it
+        try:
+            cfg.parsed_kicad_job = job
+        except Exception:
+            # Fall back to setattr for unexpected config shapes
+            setattr(cfg, "parsed_kicad_job", job)
+
+    # Execute the pipeline (stage implementations may consult cfg._parsed_kicad_job)
+    log.info("Executing pipeline stages...")
+    result_ctx = execute_pipeline(cfg, log)
+    log.info("Pipeline finished. Last stage output: %s", type(result_ctx.get("last")))
     return 0
 
 
