@@ -12,7 +12,7 @@ stages:
   - name: load
     uses: loader.kicad
     with:
-      folder: .\test\hexapod\
+      folder: ..\..\test\hexapod\
       job: hexapod-job.gbrjob
       drills:
         - hexapod-PTH.drl

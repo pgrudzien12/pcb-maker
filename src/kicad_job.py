@@ -53,6 +53,43 @@ class KiCadJob:
                 return l
         return None
 
+    def summarize(self, log, *, verbose: bool = False) -> None:
+        """Log a concise summary of this job (board metrics, layers).
+
+        This centralizes CLI-friendly summarization so callers don't duplicate
+        logging code.
+        """
+        log.info("KiCad Job Summary:")
+        log.info(
+            "  Board size: %s x %s mm  thickness=%s mm",
+            self.board_size_x,
+            self.board_size_y,
+            self.board_thickness,
+        )
+        log.info(
+            "  Copper layers: %d  Outline layer: %s",
+            len(self.copper_layers()),
+            "yes" if self.outline_layer() else "no",
+        )
+        if self.design_rules:
+            dr = self.design_rules
+            brief = ", ".join(
+                f"{k}={v}" for k, v in list(dr.items())[:5] if isinstance(v, (int, float, str))
+            )
+            log.info("  Design rules (subset): %s", brief)
+        if verbose:
+            log.debug("  Layer files:")
+            for lf in self.layers:
+                flags = []
+                if lf.is_copper:
+                    flags.append(f"Cu{lf.layer_index}")
+                if lf.is_profile:
+                    flags.append("outline")
+                if lf.side:
+                    flags.append(lf.side.lower())
+                flag_str = ",".join(flags) if flags else "-"
+                log.debug("    - %s (%s) polarity=%s", lf.path, flag_str, lf.polarity)
+
 
 class KiCadJobError(Exception):
     pass
@@ -137,6 +174,65 @@ def load_kicad_job(path: Path) -> KiCadJob:
         design_rules=design_rules,
         layers=layers,
     )
+
+
+def _resolve_job_path_from_stage(stage: object, base_dir: Path) -> Optional[Path]:
+    """Resolve job Path from a stage object.
+
+    Prefer the structured `with` mapping (exposed as `stage.with_args`).
+    Fall back to the raw stage mapping for backward compatibility.
+    """
+    job_name = None
+    folder = None
+
+    # Prefer modern, coerced 'with' mapping where stage.with_args exists.
+    with_args = getattr(stage, "with_args", None)
+    if isinstance(with_args, dict):
+        job_name = with_args.get("job")
+        folder = with_args.get("folder")
+
+    # Fall back to raw mapping if necessary (legacy support).
+    if not job_name:
+        raw = getattr(stage, "raw", {})
+        if isinstance(raw, dict):
+            job_name = raw.get("job")
+            folder = raw.get("folder")
+
+    if not job_name:
+        return None
+
+    job_path = Path(folder) / job_name if folder else Path(job_name)
+    if not job_path.is_absolute():
+        job_path = (base_dir / job_path).resolve()
+    return job_path
+
+
+def parse_kicad_job_if_present(cfg: object, base_dir: Path, log, *, verbose: bool = False):
+    """If a loader.kicad stage exists in the pipeline config, parse and return the KiCad job.
+
+    Returns KiCadJob or None. Logs lightweight messages and delegates summarization
+    to KiCadJob.summarize.
+    """
+    # Find loader.kicad stage
+    loader = None
+    for st in getattr(cfg, 'stages', []):
+        if getattr(st, 'uses', None) == 'loader.kicad':
+            loader = st
+            break
+    if not loader:
+        log.debug("No loader.kicad stage present; skipping job parse")
+        return None
+    job_path = _resolve_job_path_from_stage(loader, base_dir)
+    if not job_path:
+        log.warning("loader.kicad stage found but job path missing")
+        return None
+    try:
+        job = load_kicad_job(job_path)
+    except KiCadJobError as e:
+        log.error("Failed to parse job file: %s", e)
+        return None
+    job.summarize(log, verbose=verbose)
+    return job
 
 
 __all__ = [

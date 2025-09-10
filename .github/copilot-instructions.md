@@ -22,6 +22,8 @@ Purpose: Early-stage CLI prototype to turn KiCad fabrication outputs (.gbrjob + 
 - when opening new terminals, run `uv` to activate the virtual environment.
 - use `uv` to maintain environment consistency.
 - use 'pytest' to run tests.
+- program in object ofiented way, avoiding anemic style for domain
+- use domain driven design principles
 
 ## Dependency Notes
 - `pygerber` will supply primitive geometry; convert to Shapely `LineString`/`Polygon` for offset/boolean operations.
